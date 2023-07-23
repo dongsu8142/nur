@@ -15,6 +15,6 @@
   overlays = import ./overlays; # nixpkgs overlays
 
   gtk-gjs = pkgs.callPackage ./pkgs/gtk-gjs { };
-  # some-qt5-package = pkgs.libsForQt5.callPackage ./pkgs/some-qt5-package { };
+  naver-whale = pkgs.libsForQt5.callPackage ./pkgs/naver-whale { };
   # ...
 }
