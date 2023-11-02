@@ -47,7 +47,7 @@
 , libva
 }:
 let
-  version = "3.22.205.26";
+  version = "3.23.214.10";
   deps = [
     alsa-lib at-spi2-atk at-spi2-core atk cairo cups dbus expat
     fontconfig freetype gdk-pixbuf glib gtk3 libdrm xorg.libX11 libGL
@@ -67,7 +67,7 @@ stdenv.mkDerivation {
 
   src = fetchurl {
     url = "https://repo.whale.naver.com/stable/deb/pool/main/n/naver-whale-stable/naver-whale-stable_${version}-1_amd64.deb";
-    sha256 = "sha256-4TItlxdzy3cXeiUaGAXpIXm6zXyZfo03Zxo7y9m1Ldw=";
+    sha256 = "sha256-x8dSjdAX/cP7IYBAkBo1LKpth/9DAsBNbf3pbdi5WMc=";
   };
 
   dontConfigure = true;
