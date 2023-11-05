@@ -14,7 +14,6 @@
   modules = import ./modules; # NixOS modules
   overlays = import ./overlays; # nixpkgs overlays
 
-  gtk-gjs = pkgs.callPackage ./pkgs/gtk-gjs { };
   naver-whale = pkgs.libsForQt5.callPackage ./pkgs/naver-whale { };
   # ...
 }
