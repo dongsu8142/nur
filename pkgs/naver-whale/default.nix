@@ -40,26 +40,44 @@
 , udev
 , wayland
 , xdg-utils
+, coreutils
 , xorg
 , zlib
+, commandLineArgs ? ""
+, pulseSupport ? stdenv.isLinux
 , libpulseaudio
 , libGL
+, libvaSupport ? stdenv.isLinux
 , libva
+, enableVideoAcceleration ? libvaSupport
+, vulkanSupport ? false
+, addOpenGLRunpath
+, enableVulkan ? vulkanSupport
 }:
 let
-  version = "3.23.214.10";
+  inherit (lib) optional optionals makeLibraryPath makeSearchPathOutput makeBinPath
+    optionalString strings escapeShellArg;
+
+  version = "3.24.223.21";
+
   deps = [
     alsa-lib at-spi2-atk at-spi2-core atk cairo cups dbus expat
-    fontconfig freetype gdk-pixbuf glib gtk3 libdrm xorg.libX11 libGL
-    libxkbcommon xorg.libXScrnSaver xorg.libXcomposite xorg.libXcursor xorg.libXdamage
-    xorg.libXext xorg.libXfixes xorg.libXi xorg.libXrandr xorg.libXrender xorg.libxshmfence
-    xorg.libXtst libuuid mesa nspr nss pango pipewire udev wayland
-    xorg.libxcb zlib snappy libkrb5 libpulseaudio libva
-  ];
-  rpath = lib.makeLibraryPath deps + ":" + lib.makeSearchPathOutput "lib" "lib64" deps;
-  binpath = lib.makeBinPath deps;
-  enableFeatures = lib.optionals stdenv.isLinux [ "VaapiVideoDecoder" "VaapiVideoEncoder" ];
-  disableFeatures = lib.optional stdenv.isLinux "UseChromeOSDirectVideoDecoder";
+    fontconfig freetype gdk-pixbuf glib gtk3 libdrm libX11 libGL
+    libxkbcommon libXScrnSaver libXcomposite libXcursor libXdamage
+    libXext libXfixes libXi libXrandr libXrender libxshmfence
+    libXtst libuuid mesa nspr nss pango pipewire udev wayland
+    xorg.libxcb zlib snappy libkrb5 stdenv.cc.cc
+  ]
+    ++ optional pulseSupport libpulseaudio
+    ++ optional libvaSupport libva;
+
+  rpath = makeLibraryPath deps + ":" + makeSearchPathOutput "lib" "lib64" deps;
+  binpath = makeBinPath deps;
+
+  enableFeatures = optionals enableVideoAcceleration [ "VaapiVideoDecoder" "VaapiVideoEncoder" ]
+    ++ optional enableVulkan "Vulkan";
+
+  disableFeatures = optional enableVideoAcceleration "UseChromeOSDirectVideoDecoder";
 in
 stdenv.mkDerivation {
   pname = "naver-whale";
@@ -67,7 +85,7 @@ stdenv.mkDerivation {
 
   src = fetchurl {
     url = "https://repo.whale.naver.com/stable/deb/pool/main/n/naver-whale-stable/naver-whale-stable_${version}-1_amd64.deb";
-    sha256 = "sha256-x8dSjdAX/cP7IYBAkBo1LKpth/9DAsBNbf3pbdi5WMc=";
+    sha256 = "sha256-Av88K5cSqRm/OpKU248PHvf2QUeecrkSUfymHEwa3WA=";
   };
 
   dontConfigure = true;
@@ -77,7 +95,7 @@ stdenv.mkDerivation {
 
   nativeBuildInputs = [
     dpkg
-    wrapGAppsHook
+    (wrapGAppsHook.override { inherit makeWrapper; })
   ];
 
   buildInputs = [
@@ -92,14 +110,13 @@ stdenv.mkDerivation {
     mkdir -p $out $out/bin
     cp -R usr/share $out
     cp -R opt/ $out/opt
-    echo ${rpath}
 
     export BINARYWRAPPER=$out/opt/naver/whale/naver-whale
 
     substituteInPlace $BINARYWRAPPER \
           --replace /bin/bash ${stdenv.shell}
 
-    ln -sf $BINARYWRAPPER $out/bin/naver-whale
+    ln -sf $BINARYWRAPPER $out/bin/naver-whale-stable
 
     for exe in $out/opt/naver/whale/{whale,chrome_crashpad_handler}; do
       patchelf \
@@ -108,7 +125,7 @@ stdenv.mkDerivation {
     done
 
     substituteInPlace $out/share/applications/naver-whale.desktop \
-          --replace /usr/bin/naver-whale $out/bin/naver-whale
+          --replace /usr/bin/naver-whale-stable $out/bin/naver-whale-stable
       substituteInPlace $out/share/gnome-control-center/default-apps/naver-whale.xml \
           --replace /opt/naver $out/opt/naver
       substituteInPlace $out/share/menu/naver-whale.menu \
@@ -134,20 +151,24 @@ stdenv.mkDerivation {
     gappsWrapperArgs+=(
       --prefix LD_LIBRARY_PATH : ${rpath}
       --prefix PATH : ${binpath}
-      --suffix PATH : ${lib.makeBinPath [ xdg-utils ]}
-      ${lib.optionalString (enableFeatures != []) ''
-      --add-flags "--enable-features=${lib.strings.concatStringsSep "," enableFeatures}"
+      --suffix PATH : ${lib.makeBinPath [ xdg-utils coreutils ]}
+      ${optionalString (enableFeatures != []) ''
+      --add-flags "--enable-features=${strings.concatStringsSep "," enableFeatures}"
       ''}
-      ${lib.optionalString (disableFeatures != []) ''
-      --add-flags "--disable-features=${lib.strings.concatStringsSep "," disableFeatures}"
+      ${optionalString (disableFeatures != []) ''
+      --add-flags "--disable-features=${strings.concatStringsSep "," disableFeatures}"
       ''}
       --add-flags "\''${NIXOS_OZONE_WL:+\''${WAYLAND_DISPLAY:+--ozone-platform-hint=auto --enable-features=WaylandWindowDecorations}}"
+      ${optionalString vulkanSupport ''
+      --prefix XDG_DATA_DIRS  : "${addOpenGLRunpath.driverLink}/share"
+      ''}
+      --add-flags ${escapeShellArg commandLineArgs}
     )
   '';
 
   installCheckPhase = ''
     # Bypass upstream wrapper which suppresses errors
-    $out/opt/naver/whale/naver-whale --version
+    $out/bin/naver-whale-stable --version
   '';
 
   meta = with lib; {
