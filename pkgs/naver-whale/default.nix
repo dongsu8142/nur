@@ -58,7 +58,7 @@ let
   inherit (lib) optional optionals makeLibraryPath makeSearchPathOutput makeBinPath
     optionalString strings escapeShellArg;
 
-  version = "3.24.223.21";
+  version = "3.25.232.19";
 
   deps = [
     alsa-lib at-spi2-atk at-spi2-core atk cairo cups dbus expat
@@ -85,7 +85,7 @@ stdenv.mkDerivation {
 
   src = fetchurl {
     url = "https://repo.whale.naver.com/stable/deb/pool/main/n/naver-whale-stable/naver-whale-stable_${version}-1_amd64.deb";
-    sha256 = "sha256-Av88K5cSqRm/OpKU248PHvf2QUeecrkSUfymHEwa3WA=";
+    sha256 = "sha256-DiEklas+3FaK/TnfaCkTF0CnvQZG6w3i1+9M4OebB0U=";
   };
 
   dontConfigure = true;
