@@ -1,4 +1,4 @@
-{ lib, stdenv, fetchurl, wrapGAppsHook, makeWrapper
+{ lib, stdenv, fetchurl, buildPackages
 , alsa-lib
 , at-spi2-atk
 , at-spi2-core
@@ -12,9 +12,10 @@
 , freetype
 , gdk-pixbuf
 , glib
-, gnome
+, adwaita-icon-theme
 , gsettings-desktop-schemas
 , gtk3
+, gtk4
 , libX11
 , libXScrnSaver
 , libXcomposite
@@ -51,27 +52,27 @@
 , libva
 , enableVideoAcceleration ? libvaSupport
 , vulkanSupport ? false
-, addOpenGLRunpath
+, addDriverRunpath
 , enableVulkan ? vulkanSupport
 }:
 let
   inherit (lib) optional optionals makeLibraryPath makeSearchPathOutput makeBinPath
     optionalString strings escapeShellArg;
 
-  version = "3.25.232.19";
+  version = "3.28.266.14";
 
   deps = [
     alsa-lib at-spi2-atk at-spi2-core atk cairo cups dbus expat
-    fontconfig freetype gdk-pixbuf glib gtk3 libdrm libX11 libGL
+    fontconfig freetype gdk-pixbuf glib gtk3 gtk4 libdrm libX11 libGL
     libxkbcommon libXScrnSaver libXcomposite libXcursor libXdamage
     libXext libXfixes libXi libXrandr libXrender libxshmfence
     libXtst libuuid mesa nspr nss pango pipewire udev wayland
-    xorg.libxcb zlib snappy libkrb5 stdenv.cc.cc
+    xorg.libxcb zlib snappy libkrb5
   ]
     ++ optional pulseSupport libpulseaudio
     ++ optional libvaSupport libva;
 
-  rpath = makeLibraryPath deps + ":" + makeSearchPathOutput "lib" "lib64" deps;
+  rpath = makeLibraryPath deps + ":" + makeSearchPathOutput "lib" "lib64" deps + ":" + "$out/opt/naver/whale";
   binpath = makeBinPath deps;
 
   enableFeatures = optionals enableVideoAcceleration [ "VaapiVideoDecoder" "VaapiVideoEncoder" ]
@@ -85,7 +86,7 @@ stdenv.mkDerivation {
 
   src = fetchurl {
     url = "https://repo.whale.naver.com/stable/deb/pool/main/n/naver-whale-stable/naver-whale-stable_${version}-1_amd64.deb";
-    sha256 = "sha256-DiEklas+3FaK/TnfaCkTF0CnvQZG6w3i1+9M4OebB0U=";
+    sha256 = "sha256-K89WpmBvxXY7/C504lALZBCQgz5g4FGsGiehhKf5UiM=";
   };
 
   dontConfigure = true;
@@ -95,12 +96,12 @@ stdenv.mkDerivation {
 
   nativeBuildInputs = [
     dpkg
-    (wrapGAppsHook.override { inherit makeWrapper; })
+    (buildPackages.wrapGAppsHook3.override { makeWrapper = buildPackages.makeShellWrapper; })
   ];
 
   buildInputs = [
-    glib gsettings-desktop-schemas gtk3
-    gnome.adwaita-icon-theme
+    glib gsettings-desktop-schemas gtk3 gtk4
+    adwaita-icon-theme
   ];
 
   unpackPhase = "dpkg-deb --fsys-tarfile $src | tar -x --no-same-permissions --no-same-owner";
@@ -116,7 +117,9 @@ stdenv.mkDerivation {
     substituteInPlace $BINARYWRAPPER \
           --replace /bin/bash ${stdenv.shell}
 
-    ln -sf $BINARYWRAPPER $out/bin/naver-whale-stable
+    ln -sf $BINARYWRAPPER $out/bin/naver-whale
+
+    patchelf --set-rpath ${stdenv.cc.cc.lib}/lib $out/opt/naver/whale/libclovaeyes.so
 
     for exe in $out/opt/naver/whale/{whale,chrome_crashpad_handler}; do
       patchelf \
@@ -125,7 +128,7 @@ stdenv.mkDerivation {
     done
 
     substituteInPlace $out/share/applications/naver-whale.desktop \
-          --replace /usr/bin/naver-whale-stable $out/bin/naver-whale-stable
+          --replace /usr/bin/naver-whale $out/bin/naver-whale
       substituteInPlace $out/share/gnome-control-center/default-apps/naver-whale.xml \
           --replace /opt/naver $out/opt/naver
       substituteInPlace $out/share/menu/naver-whale.menu \
@@ -153,14 +156,14 @@ stdenv.mkDerivation {
       --prefix PATH : ${binpath}
       --suffix PATH : ${lib.makeBinPath [ xdg-utils coreutils ]}
       ${optionalString (enableFeatures != []) ''
-      --add-flags "--enable-features=${strings.concatStringsSep "," enableFeatures}"
+      --add-flags "--enable-features=${strings.concatStringsSep "," enableFeatures}\''${NIXOS_OZONE_WL:+\''${WAYLAND_DISPLAY:+,WaylandWindowDecorations}}"
       ''}
       ${optionalString (disableFeatures != []) ''
       --add-flags "--disable-features=${strings.concatStringsSep "," disableFeatures}"
       ''}
-      --add-flags "\''${NIXOS_OZONE_WL:+\''${WAYLAND_DISPLAY:+--ozone-platform-hint=auto --enable-features=WaylandWindowDecorations}}"
+      --add-flags "\''${NIXOS_OZONE_WL:+\''${WAYLAND_DISPLAY:+--ozone-platform-hint=auto}}"
       ${optionalString vulkanSupport ''
-      --prefix XDG_DATA_DIRS  : "${addOpenGLRunpath.driverLink}/share"
+      --prefix XDG_DATA_DIRS  : "${addDriverRunpath.driverLink}/share"
       ''}
       --add-flags ${escapeShellArg commandLineArgs}
     )
@@ -168,7 +171,7 @@ stdenv.mkDerivation {
 
   installCheckPhase = ''
     # Bypass upstream wrapper which suppresses errors
-    $out/bin/naver-whale-stable --version
+    $out/opt/naver/whale/naver-whale --version
   '';
 
   meta = with lib; {
