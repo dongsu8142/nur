@@ -117,7 +117,7 @@ stdenv.mkDerivation {
     substituteInPlace $BINARYWRAPPER \
           --replace /bin/bash ${stdenv.shell}
 
-    ln -sf $BINARYWRAPPER $out/bin/naver-whale
+    ln -sf $BINARYWRAPPER $out/bin/naver-whale-stable
 
     patchelf --set-rpath ${stdenv.cc.cc.lib}/lib $out/opt/naver/whale/libclovaeyes.so
 
@@ -128,7 +128,7 @@ stdenv.mkDerivation {
     done
 
     substituteInPlace $out/share/applications/naver-whale.desktop \
-          --replace /usr/bin/naver-whale $out/bin/naver-whale
+          --replace /usr/bin/naver-whale-stable $out/bin/naver-whale-stable
       substituteInPlace $out/share/gnome-control-center/default-apps/naver-whale.xml \
           --replace /opt/naver $out/opt/naver
       substituteInPlace $out/share/menu/naver-whale.menu \
@@ -171,7 +171,7 @@ stdenv.mkDerivation {
 
   installCheckPhase = ''
     # Bypass upstream wrapper which suppresses errors
-    $out/opt/naver/whale/naver-whale --version
+    $out/bin/naver-whale-stable --version
   '';
 
   meta = with lib; {
