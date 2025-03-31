@@ -108,6 +108,7 @@ stdenv.mkDerivation {
 
   installPhase = ''
     runHook preInstall
+    export HOME=$(mktemp -d)
     mkdir -p $out $out/bin
     cp -R usr/share $out
     cp -R opt/ $out/opt
