@@ -60,7 +60,7 @@ let
   inherit (lib) optional optionals makeLibraryPath makeSearchPathOutput makeBinPath
     optionalString strings escapeShellArg;
 
-  version = "4.30.291.11";
+  version = "4.31.304.18";
 
   deps = [
     alsa-lib at-spi2-atk at-spi2-core atk cairo cups dbus expat
@@ -87,7 +87,7 @@ stdenv.mkDerivation {
 
   src = fetchurl {
     url = "https://repo.whale.naver.com/stable/deb/pool/main/n/naver-whale-stable/naver-whale-stable_${version}-1_amd64.deb";
-    sha256 = "sha256-+YFPAloO5ZGVo3qLGIcjVh/3LMbhTc3h3PlB7OLsfkI=";
+    sha256 = "sha256-I/ZsKhLbpcfRfOy8O3JFb7SiLrdlv8vcf/NFTZE5XAY=";
   };
 
   dontConfigure = true;
@@ -121,7 +121,7 @@ stdenv.mkDerivation {
 
     ln -sf $BINARYWRAPPER $out/bin/naver-whale-stable
 
-    patchelf --set-rpath ${stdenv.cc.cc.lib}/lib $out/opt/naver/whale/libclovaeyes.so
+    # patchelf --set-rpath ${stdenv.cc.cc.lib}/lib $out/opt/naver/whale/libclovaeyes.so
 
     for exe in $out/opt/naver/whale/{whale,chrome_crashpad_handler}; do
       patchelf \
